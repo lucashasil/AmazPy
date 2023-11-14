@@ -1,10 +1,13 @@
 import requests
 
 import tkinter as tk
+from tkinter import ttk
 
 import sqlite3
 
 from bs4 import BeautifulSoup
+
+from datetime import datetime
 
 class App(tk.Tk):
     def __init__(self):
@@ -38,33 +41,30 @@ def submit() :
 
     con = sqlite3.connect("amazpy.db")
     cur = con.cursor()
-    cur.execute("CREATE TABLE IF NOT EXISTS product(id INTEGER PRIMARY KEY, title TEXT, price TEXT, url TEXT)")
-    cur.execute("INSERT INTO product VALUES(NULL, ?, ?, ?)", (title, combined_price, url))
+    cur.execute("CREATE TABLE IF NOT EXISTS product(id INTEGER PRIMARY KEY, date TEXT, price TEXT, url TEXT)")
+    cur.execute("INSERT INTO product VALUES(NULL, ?, ?, ?)", (datetime.now().strftime("%m/%d/%Y, %H:%M"), combined_price, url))
     con.commit()
 
-    cur.execute("SELECT * FROM product")
+    cur.execute("SELECT * FROM product WHERE url=?", (url, ))
     rows = cur.fetchall()
-    new_rows = []
-    for i in range(1,len(rows)+1):
-        cols = []
-        for j in range(4):
-            e = tk.Entry(app, relief=tk.GROOVE)
-            e.grid(row=i, column=j, sticky=tk.NSEW)
-            e.insert(tk.END, rows[i-1][j])
-            cols.append(e)
-        new_rows.append(cols)
+
+    label = tk.Label(app, text="Product Price History", font=("Arial", 26)).grid(row=1, columnspan=4)
+    cols = ('Date', 'Price', 'URL')
+    listBox = ttk.Treeview(app, columns=cols, show='headings')
+    for col in cols:
+        listBox.heading(col, text=col)
+    listBox.grid(row=2,column=0,columnspan=6)
+
+    for row in rows:
+        listBox.insert("", "end", values=(row[1], row[2], row[3]))
 
 app = App()
-app.geometry("600x400")
+app.geometry("1000x600")
 product_url = tk.StringVar()
 
-url_label = tk.Label(app, text="Product URL")
-url_entry = tk.Entry(app, textvariable=product_url)
-sub_btn=tk.Button(app ,text = 'Submit', command = submit)
-
-url_label.grid(row=0,column=0)
-url_entry.grid(row=0,column=1)
-sub_btn.grid(row=0,column=2)
+url_label = tk.Label(app, text="Product URL").grid(row=0,column=0)
+url_entry = tk.Entry(app, textvariable=product_url).grid(row=0,column=1)
+sub_btn=tk.Button(app ,text = 'Submit', command = submit).grid(row=0,column=2)
 
 app.mainloop()
 
