@@ -1,70 +1,103 @@
 import requests
-
 import tkinter as tk
 from tkinter import ttk
-
 import sqlite3
-
 from bs4 import BeautifulSoup
-
 from datetime import datetime
+
+class ProductScraper:
+    def __init__(self):
+        self.base_url = "https://amazon.com"
+        self.headers = {
+            "Accept-Language": "en-US,en;q=0.5",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/119.0"
+        }
+        self.cookies = None
+
+    def scrape_product_price(self, url):
+        response = requests.get(self.base_url, headers=self.headers)
+        self.cookies = response.cookies
+
+        r2 = requests.get(url, headers=self.headers, cookies=self.cookies)
+        soup = BeautifulSoup(r2.content, features="html.parser")
+
+        whole_span = soup.find('span', class_='a-price-whole')
+        fraction_span = soup.find('span', class_='a-price-fraction')
+
+        whole_text = whole_span.text if whole_span else ''
+        fraction_text = fraction_span.text if fraction_span else ''
+        combined_price = whole_text + fraction_text
+
+        return combined_price
+
+class ProductDatabase:
+    def __init__(self, db_name="amazpy.db"):
+        self.db_name = db_name
+        self.connection = sqlite3.connect(db_name)
+        self.cursor = self.connection.cursor()
+        self.create_table()
+
+    def create_table(self):
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS product(id INTEGER PRIMARY KEY, date TEXT, price TEXT, url TEXT)")
+        self.connection.commit()
+
+    def insert_record(self, date, price, url):
+        self.cursor.execute("INSERT INTO product VALUES(NULL, ?, ?, ?)", (date, price, url))
+        self.connection.commit()
+
+    def select_records(self, url):
+        self.cursor.execute("SELECT * FROM product WHERE url=?", (url, ))
+        return self.cursor.fetchall()
 
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(2, weight=1)
 
-def submit() :
-    base_url = "https://amazon.com"
-    url = product_url.get()
+        self.product_url = tk.StringVar()
+        self.create_widgets()
 
-    headers = {
-        "Accept-Language": "en-US,en;q=0.5",
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/119.0"
-    }
+    def create_widgets(self):
+        url_label = tk.Label(self, text="Product URL")
+        url_label.grid(row=0, column=0, sticky='nsew')
 
-    response = requests.get(base_url, headers=headers)
-    cookies = response.cookies
+        url_entry = tk.Entry(self, textvariable=self.product_url)
+        url_entry.grid(row=0, column=1, sticky='nsew')
 
-    r2 = requests.get(url, headers=headers, cookies=cookies)
+        sub_btn = tk.Button(self, text='Submit', command=self.submit)
+        sub_btn.grid(row=0, column=2, sticky='nsew')
 
-    soup = BeautifulSoup(r2.content, features="html.parser")
+        self.label = tk.Label(self, text="Product Price History", font=("Arial", 26))
+        self.label.grid(row=1, columnspan=3, sticky='nsew')
 
-    title = soup.find(id='productTitle').text.strip()
+        cols = ('Date', 'Price', 'URL')
+        self.listBox = ttk.Treeview(self, columns=cols, show='headings')
 
-    whole_span = soup.find('span', class_='a-price-whole')
-    fraction_span = soup.find('span', class_='a-price-fraction')
+        for i in range(len(cols)):
+            self.listBox.heading(i, text=cols[i])
 
-    whole_text = whole_span.text if whole_span else ''
-    fraction_text = fraction_span.text if fraction_span else ''
+        self.listBox.grid(row=2, column=0, columnspan=3, sticky='nsew')
 
-    combined_price = whole_text + fraction_text
+    def submit(self):
+        url = self.product_url.get()
+        scraper = ProductScraper()
+        price = scraper.scrape_product_price(url)
 
-    con = sqlite3.connect("amazpy.db")
-    cur = con.cursor()
-    cur.execute("CREATE TABLE IF NOT EXISTS product(id INTEGER PRIMARY KEY, date TEXT, price TEXT, url TEXT)")
-    cur.execute("INSERT INTO product VALUES(NULL, ?, ?, ?)", (datetime.now().strftime("%m/%d/%Y, %H:%M"), combined_price, url))
-    con.commit()
+        db = ProductDatabase()
+        date = datetime.now().strftime("%m/%d/%Y, %H:%M")
+        db.insert_record(date, price, url)
 
-    cur.execute("SELECT * FROM product WHERE url=?", (url, ))
-    rows = cur.fetchall()
+        rows = db.select_records(url)
+        self.update_listbox(rows)
 
-    label = tk.Label(app, text="Product Price History", font=("Arial", 26)).grid(row=1, columnspan=4)
-    cols = ('Date', 'Price', 'URL')
-    listBox = ttk.Treeview(app, columns=cols, show='headings')
-    for col in cols:
-        listBox.heading(col, text=col)
-    listBox.grid(row=2,column=0,columnspan=6)
+    def update_listbox(self, rows):
+        for row in self.listBox.get_children():
+            self.listBox.delete(row)
 
-    for row in rows:
-        listBox.insert("", "end", values=(row[1], row[2], row[3]))
+        for row in rows:
+            self.listBox.insert("", "end", values=(row[1], row[2], row[3]))
 
-app = App()
-app.geometry("1000x600")
-product_url = tk.StringVar()
-
-url_label = tk.Label(app, text="Product URL").grid(row=0,column=0)
-url_entry = tk.Entry(app, textvariable=product_url).grid(row=0,column=1)
-sub_btn=tk.Button(app ,text = 'Submit', command = submit).grid(row=0,column=2)
-
-app.mainloop()
-
+if __name__ == "__main__":
+    app = App()
+    app.mainloop()
