@@ -1,4 +1,5 @@
 import tkinter as tk
+import threading
 from tkinter import ttk
 from datetime import datetime
 from amazpy.product_scraper import ProductScraper
@@ -45,6 +46,10 @@ class App(tk.Tk):
 
         rows = db.select_records(url)
         self.update_listbox(rows)
+
+        # Use a threaded timer to periodically fetch new data for the listing
+        # This will run every hour
+        threading.Timer(60 * 60, self.submit).start()
 
     def update_listbox(self, rows):
         for row in self.listBox.get_children():
