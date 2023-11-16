@@ -14,12 +14,14 @@ class ProductScraper:
         }
         self.cookies = None
 
-    def scrape_product_price(self, url: str) -> int:
+    def scrape_product_info(self, url: str) -> dict[str, str]:
         response = requests.get(self.base_url, headers=self.headers)
         self.cookies = response.cookies
 
         r2 = requests.get(url, headers=self.headers, cookies=self.cookies)
         soup = BeautifulSoup(r2.content, features="html.parser")
+
+        product_title = soup.find("span", id="productTitle").text.strip()
 
         whole_span = soup.find("span", class_="a-price-whole")
         fraction_span = soup.find("span", class_="a-price-fraction")
@@ -28,4 +30,4 @@ class ProductScraper:
         fraction_text = fraction_span.text if fraction_span else ""
         combined_price = whole_text + fraction_text
 
-        return combined_price
+        return {"title": product_title, "price": combined_price}

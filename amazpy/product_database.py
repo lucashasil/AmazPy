@@ -1,5 +1,5 @@
 import sqlite3
-from types import Any
+from typing import Any
 
 
 class ProductDatabase:
@@ -12,13 +12,13 @@ class ProductDatabase:
     def create_table(self) -> None:
         self.cursor.execute(
             "CREATE TABLE IF NOT EXISTS product(id INTEGER PRIMARY KEY, date TEXT,"
-            " price TEXT, url TEXT)"
+            " title TEXT, price TEXT, url TEXT)"
         )
         self.connection.commit()
 
-    def insert_record(self, date, price, url) -> None:
+    def insert_record(self, date, price, title, url) -> None:
         self.cursor.execute(
-            "INSERT INTO product VALUES(NULL, ?, ?, ?)", (date, price, url)
+            "INSERT INTO product VALUES(NULL, ?, ?, ?, ?)", (date, price, title, url)
         )
         self.connection.commit()
 
