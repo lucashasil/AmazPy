@@ -4,6 +4,7 @@ from tkinter import ttk
 from datetime import datetime
 from amazpy.product_scraper import ProductScraper
 from amazpy.product_database import ProductDatabase
+from types import Any
 
 class App(tk.Tk):
     def __init__(self):
@@ -14,7 +15,7 @@ class App(tk.Tk):
         self.product_url = tk.StringVar()
         self.create_widgets()
 
-    def create_widgets(self):
+    def create_widgets(self) -> None:
         url_label = tk.Label(self, text="Product URL")
         url_label.grid(row=0, column=0, sticky='nsew')
 
@@ -35,7 +36,7 @@ class App(tk.Tk):
 
         self.listBox.grid(row=2, column=0, columnspan=3, sticky='nsew')
 
-    def submit(self):
+    def submit(self) -> None:
         url = self.product_url.get()
         scraper = ProductScraper()
         price = scraper.scrape_product_price(url)
@@ -44,14 +45,14 @@ class App(tk.Tk):
         date = datetime.now().strftime("%m/%d/%Y, %H:%M")
         db.insert_record(date, price, url)
 
-        rows = db.select_records(url)
+        rows: list[Any] = db.select_records(url)
         self.update_listbox(rows)
 
         # Use a threaded timer to periodically fetch new data for the listing
         # This will run every hour
         threading.Timer(60 * 60, self.submit).start()
 
-    def update_listbox(self, rows):
+    def update_listbox(self, rows: list[Any]) -> None:
         for row in self.listBox.get_children():
             self.listBox.delete(row)
 

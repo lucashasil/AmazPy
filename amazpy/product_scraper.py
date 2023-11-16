@@ -10,7 +10,7 @@ class ProductScraper:
         }
         self.cookies = None
 
-    def scrape_product_price(self, url):
+    def scrape_product_price(self, url: str) -> int:
         response = requests.get(self.base_url, headers=self.headers)
         self.cookies = response.cookies
 
