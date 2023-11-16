@@ -6,6 +6,7 @@ from amazpy.product_scraper import ProductScraper
 from amazpy.product_database import ProductDatabase
 from types import Any
 
+
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -17,24 +18,24 @@ class App(tk.Tk):
 
     def create_widgets(self) -> None:
         url_label = tk.Label(self, text="Product URL")
-        url_label.grid(row=0, column=0, sticky='nsew')
+        url_label.grid(row=0, column=0, sticky="nsew")
 
         url_entry = tk.Entry(self, textvariable=self.product_url)
-        url_entry.grid(row=0, column=1, sticky='nsew')
+        url_entry.grid(row=0, column=1, sticky="nsew")
 
-        sub_btn = tk.Button(self, text='Submit', command=self.submit)
-        sub_btn.grid(row=0, column=2, sticky='nsew')
+        sub_btn = tk.Button(self, text="Submit", command=self.submit)
+        sub_btn.grid(row=0, column=2, sticky="nsew")
 
         self.label = tk.Label(self, text="Product Price History", font=("Arial", 26))
-        self.label.grid(row=1, columnspan=3, sticky='nsew')
+        self.label.grid(row=1, columnspan=3, sticky="nsew")
 
-        cols = ('Date', 'Price', 'URL')
-        self.listBox = ttk.Treeview(self, columns=cols, show='headings')
+        cols = ("Date", "Price", "URL")
+        self.listBox = ttk.Treeview(self, columns=cols, show="headings")
 
         for i in range(len(cols)):
             self.listBox.heading(i, text=cols[i])
 
-        self.listBox.grid(row=2, column=0, columnspan=3, sticky='nsew')
+        self.listBox.grid(row=2, column=0, columnspan=3, sticky="nsew")
 
     def submit(self) -> None:
         url = self.product_url.get()
