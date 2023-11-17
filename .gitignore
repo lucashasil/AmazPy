@@ -164,3 +164,6 @@ amazpy.db
 
 # output spreadsheet for headless
 amazpy.xlsx
+
+# ds store
+.DS_Store
