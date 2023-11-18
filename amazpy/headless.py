@@ -19,6 +19,14 @@ class Headless:
         # This will run every hour
         threading.Timer(60 * 60, self.scrape).start()
 
+    def construct_email_message(self, entries: list[Any]) -> str:
+        message = ""
+        for entry in entries:
+            if self.should_send_alert(entry):
+                message += (f"{entry[-1][3]} - {entry[-1][4]}\n === ${entry[-1][2]} ===\n\n")
+        # We need to encode the string as UTF-8 to make it valid for sending as an email
+        return message.encode("utf-8")
+
     def should_send_alert(self, entries: list[Any]) -> bool:
         average_price = None
 
@@ -26,7 +34,7 @@ class Headless:
         # to determine if we should send an alert. An important note here is that we
         # exclude the latest entry from the average calculation.
         excl_list = entries[:-1]
-
+        running_price = 0.0
         for entry in excl_list:
             # Price is the third column of a retrieved row
             running_price += float(entry[2])
@@ -44,9 +52,8 @@ class Headless:
         parsed_json = json.loads(file_contents)
         urls = parsed_json["product_urls"]
 
-        # Prepare data structures
+        # Entries is a list of lists, where each list contains the entries for a single URL
         entries = []
-        worksheets = []
 
         # Create Excel workbook
         workbook = xlsxwriter.Workbook("amazpy.xlsx")
@@ -64,15 +71,19 @@ class Headless:
                 datetime.now().strftime("%m/%d/%Y, %H:%M"), price, title, url
             )
 
-            # Retrieve product information from database
+            # Retrieve product information from database for a SINGLE URL/listing
             url_entries = self.db.select_records(url)
             entries.append(url_entries)
 
-            # Create worksheet with sanitized title
+            # Create worksheet with sanitized title, xlsx worksheets cannot be longer than 31 characters
             special_characters = r"[\[\]:*?/\\]"
             title = re.sub(special_characters, "", title)[:30]
+
+            # We want to create a new worksheet for each URL/listing
             worksheet = workbook.add_worksheet(title)
-            worksheets.append(worksheet)
+
+            # Track products that have had a significant price drop
+            price_drops = []
 
             # Write product information to worksheet
             for entry in entries:
@@ -84,7 +95,6 @@ class Headless:
         # Close Excel workbook
         workbook.close()
 
-        if self.should_send_alert(entries):
-            email = Email(self.email_credentials)
+        Email(self.email_credentials, self.construct_email_message(entries))
 
         print("successfully finished scraping, waiting for next run...")
