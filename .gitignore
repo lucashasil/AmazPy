@@ -164,3 +164,9 @@ amazpy.db
 
 # output spreadsheet for headless
 amazpy.xlsx
+
+# ds store
+.DS_Store
+
+# disregard input urls
+urls.json
