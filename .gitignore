@@ -167,3 +167,6 @@ amazpy.xlsx
 
 # ds store
 .DS_Store
+
+# disregard input urls
+urls.json
