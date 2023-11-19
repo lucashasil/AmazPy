@@ -3,10 +3,10 @@ from amazpy.product_scraper import ProductScraper
 from amazpy.email import Email
 from datetime import datetime
 from typing import Any
-import threading
 import json
 import xlsxwriter
 import re
+import time
 
 
 class Headless:
@@ -15,9 +15,11 @@ class Headless:
         self.db = ProductDatabase()
         self.scrape()
 
-        # Use a threaded timer to periodically fetch new data for the listing
-        # This will run every hour
-        threading.Timer(60 * 60, self.scrape).start()
+        # Continually scrape every hour, this will block the main thread
+        # but that is fine as we have nothing else to do (unlike the GUI)
+        while True:
+            time.sleep(60 * 60)
+            self.scrape()
 
     def construct_email_message(self, entries: list[Any]) -> str:
         message = ""
@@ -82,9 +84,6 @@ class Headless:
             # We want to create a new worksheet for each URL/listing
             worksheet = workbook.add_worksheet(title)
 
-            # Track products that have had a significant price drop
-            price_drops = []
-
             # Write product information to worksheet
             for entry in entries:
                 for sub_entry in entry:
@@ -95,6 +94,7 @@ class Headless:
         # Close Excel workbook
         workbook.close()
 
+        # Send email with price drop notification if necessary
         Email(self.email_credentials, self.construct_email_message(entries))
 
         print("successfully finished scraping, waiting for next run...")

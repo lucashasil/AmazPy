@@ -28,7 +28,7 @@ class App(tk.Tk):
         url_entry = ttk.Entry(self, textvariable=self.product_url, width=50)
         url_entry.grid(row=0, column=1, sticky="nsew")
 
-        sub_btn = ttk.Button(self, text="Submit", command=self.submit, width=20)
+        sub_btn = ttk.Button(self, text="Submit", command=self.scrape, width=20)
         sub_btn.grid(row=0, column=2, sticky="nsew")
 
         self.label = ttk.Label(self, text="Product Price History", font=("Arial", 26))
@@ -52,7 +52,7 @@ class App(tk.Tk):
             total += float(row[2])
         return total / len(rows)
 
-    def submit(self) -> None:
+    def scrape(self) -> None:
         url = self.product_url.get()
         scraper = ProductScraper()
 
@@ -67,9 +67,12 @@ class App(tk.Tk):
         rows: list[Any] = db.select_records(url)
         self.update_listbox(rows)
 
-        # Use a threaded timer to periodically fetch new data for the listing
-        # This will run every hour
-        threading.Timer(60 * 60, self.submit).start()
+        # A threaded timer is used here to avoid blocking the main (GUI) thread
+        # to avoid the GUI from freezing when performing rescrapes. Compare this to
+        # the sleep used in the headless variant, where we need to block the main thread
+        # to avoid concurrent database writes/reads across a single connection and multiple threads.
+        # Rescrape every hour.
+        threading.Timer(60 * 60, self.scrape).start()
 
     def update_listbox(self, rows: list[Any]) -> None:
         average_price = self.get_average_price(rows)
