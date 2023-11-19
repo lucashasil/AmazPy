@@ -11,11 +11,11 @@ import time
 
 
 class Headless:
-    def __init__(self, email_credentials: str | None):
+    def __init__(self, email_credentials: str):
         """A class representing the headless invocation of the application.
 
         Args:
-            email_credentials (str | None): an optional string representing the user's email credentials in <email>:<app_password> format
+            email_credentials (str): a string representing the user's email credentials in <email>:<app_password> format
         """
         self.email_credentials = email_credentials
         self.db = ProductDatabase()
@@ -40,11 +40,27 @@ class Headless:
         message = ""
         for entry in entries:
             if self.should_send_alert(entry):
-                message += (
-                    f"{entry[-1][3]} - {entry[-1][4]}\n === ${entry[-1][2]} ===\n\n"
-                )
+                message += self.process_entry_region(entry[-1])
         # We need to encode the string as UTF-8 to make it valid for sending as an email
         return message.encode("utf-8")
+
+    def process_entry_region(self, sub_entry: Any) -> str:
+        region_pattern = re.compile(r'https:\/\/www\.amazon\.(com\.au|com|co\.uk|ca)')
+        match = re.search(region_pattern, sub_entry[4])
+
+        currency_mapping = {
+            "com": ("USD", "$"),
+            "com.au": ("AUD", "$"),
+            "co.uk": ("GBP", "£"),
+            "ca": ("CAD", "$")
+        }
+
+        if match and match.group(1) in currency_mapping:
+            currency_code, currency_symbol = currency_mapping[match.group(1)]
+            return f"{sub_entry[3]} - {sub_entry[4]}\n === {currency_symbol}{sub_entry[2]} {currency_code} ===\n\n"
+
+        # Handle the case where match_group is not in the mapping
+        return ""
 
     def should_send_alert(self, sub_entries: list[Any]) -> bool:
         """Determine whether or not an email alert should be sent for a given list of product entries
@@ -55,6 +71,10 @@ class Headless:
         Returns:
             bool: a boolean representing whether or not an alert should be sent
         """
+
+        # Early return if we don't have enough entries to do anything meaningful
+        if sub_entries is None or len(sub_entries) == 0:
+            return False
 
         average_price = None
 
@@ -80,6 +100,12 @@ class Headless:
         # Parse JSON data
         parsed_json = json.loads(file_contents)
         urls = parsed_json["product_urls"]
+
+        # Process each URL to get them in a 'cleansed' format
+        pattern = re.compile(r'https:\/\/www\.amazon\.(com\.au|com|co\.uk|ca)\/.*?\/(dp\/[A-Z0-9]+)\/?.*')
+        for i in range(len(urls)):
+            url = re.sub(pattern, r'https://www.amazon.\1/\2', urls[i])
+            urls[i] = url
 
         # Entries is a list of lists, where each list contains the entries for a single URL
         entries = []
@@ -117,16 +143,19 @@ class Headless:
                         worksheet.write_row(
                             "A" + str(entry.index(sub_entry) + 1), sub_entry[1:]
                         )
-
-                # Close Excel workbook
-                workbook.close()
-
-                # Send email with price drop notification if necessary
-                Email(self.email_credentials, self.construct_email_message(entries))
-
-                print("successfully finished scraping, waiting for next run...")
             except RequestException:
                 print(
                     "There was an issue fetching product information from Amazon,"
                     " please wait for the next retry or restart..."
                 )
+
+        # Close Excel workbook
+        workbook.close()
+
+        # Send email with price drop notification if necessary
+        email_message = self.construct_email_message(entries)
+        # Make sure we check that the email body is non-empty before we try to construct one
+        if email_message != b'':
+            Email(self.email_credentials, email_message)
+
+        print("successfully finished scraping, waiting for next run...")

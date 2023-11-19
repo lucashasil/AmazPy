@@ -23,8 +23,12 @@ if __name__ == "__main__":
             " format."
         ),
     )
-
     args = parser.parse_args()
+
+    if args.headless and not args.email_credentials:
+        parser.error(
+            "--headless requires --email-credentials to be supplied."
+        )
 
     # Run the application in appropriate mode based on (optional) input flag
     if args.headless:

@@ -4,11 +4,18 @@ from bs4 import BeautifulSoup
 
 
 class ProductScraper:
-    def __init__(self):
+    # TODO add different store options
+    # TODO add URL cleansing to handle any generic Amazon URL
+    def __init__(self, base_url: str = "https://amazon.com"):
         """This class represents a web scraper which will be used to perform
         the actual scraping of product information from Amazon.
         """
-        self.base_url = "https://amazon.com"
+
+        self.base_url = base_url
+
+        # We need to set the headers appropriately to ensure that the request
+        # is not blocked by Amazon. The User-Agent corresponds to a Firefox browser
+        # on MacOS
         self.headers = {
             "Accept-Language": "en-US,en;q=0.5",
             "User-Agent": (
@@ -16,6 +23,8 @@ class ProductScraper:
                 " Gecko/20100101 Firefox/119.0"
             ),
         }
+
+        # Store the cookies from the initial request for future reusability
         self.cookies = None
 
     def scrape_product_info(self, url: str) -> dict[str, str]:
