@@ -18,13 +18,15 @@ if __name__ == "__main__":
         dest="email_credentials",
         action="store",
         help=(
-            "The email address and it's application password used to send and receive"
-            " emails. This should be supplied in <email>:<password> format."
+            "The email address and it's application password used to send and"
+            " receive emails. This should be supplied in <email>:<password>"
+            " format."
         ),
     )
 
     args = parser.parse_args()
 
+    # Run the application in appropriate mode based on (optional) input flag
     if args.headless:
         headless = Headless(args.email_credentials)
     else:
