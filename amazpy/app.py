@@ -1,12 +1,16 @@
-import tkinter as tk
+"""The GUI runtime for AmazPy."""
+import re
 import threading
-from tkinter import ttk
-import sv_ttk
+import tkinter as tk
 from datetime import datetime
-from amazpy.product_scraper import ProductScraper
-from amazpy.product_database import ProductDatabase
+from tkinter import ttk
 from typing import Any
+
+import sv_ttk
 from requests.exceptions import RequestException
+
+from amazpy.product_database import ProductDatabase
+from amazpy.product_scraper import ProductScraper
 
 
 class App(tk.Tk):
@@ -40,14 +44,14 @@ class App(tk.Tk):
         self.label.grid(row=1, columnspan=3, sticky="nsew")
 
         cols = ("Date", "Price", "Title", "URL")
-        self.listBox = ttk.Treeview(self, columns=cols, show="headings")
-        self.listBox.tag_configure("gray", background="#3C3C3C")
-        self.listBox.tag_configure("highlight", background="#FFD465")
+        self.list_box = ttk.Treeview(self, columns=cols, show="headings")
+        self.list_box.tag_configure("gray", background="#3C3C3C")
+        self.list_box.tag_configure("highlight", background="#FFD465")
 
-        for i in range(len(cols)):
-            self.listBox.heading(i, text=cols[i])
+        for (i , col) in enumerate(cols):
+            self.list_box.heading(i, text=col)
 
-        self.listBox.grid(row=2, column=0, columnspan=3, sticky="nsew")
+        self.list_box.grid(row=2, column=0, columnspan=3, sticky="nsew")
 
     def get_average_price(self, rows: list[Any]) -> float:
         """Get the average price for a list of entries for a single product.
@@ -69,19 +73,34 @@ class App(tk.Tk):
         """Perform the actual scraping of product information from Amazon."""
 
         url = self.product_url.get()
+
+        # Process URL into a 'cleansed' format
+        pattern = re.compile(
+            r"https:\/\/www\.amazon\.(com\.au|com|co\.uk|ca)\/.*?\/(dp\/[A-Z0-9]+)\/?.*"
+        )
+        url = re.sub(pattern, r"https://www.amazon.\1/\2", url)
+
         try:
             scraper = ProductScraper()
             info = scraper.scrape_product_info(url)
             title = info["title"]
             price = info["price"]
 
+            # Price could not be scraped, so return early
+            if price == "":
+                print(
+                    "This product might not currently be available or you may be using"
+                    " an incorrect store region."
+                )
+                return
+
             db = ProductDatabase()
             date = datetime.now().strftime("%m/%d/%Y, %H:%M")
             db.insert_record(date, price, title, url)
 
             rows: list[Any] = db.select_records(url)
-            self.update_listbox(rows)
-        except RequestException as e:
+            self.update_list_box(rows)
+        except RequestException:
             print(
                 "There was an issue fetching product information from Amazon, please"
                 " wait for the next retry or restart..."
@@ -94,8 +113,8 @@ class App(tk.Tk):
         # Rescrape every hour.
         threading.Timer(60 * 60, self.scrape).start()
 
-    def update_listbox(self, rows: list[Any]) -> None:
-        """Update the listbox (treeview) for the Tkinter GUI with the latest product information.
+    def update_list_box(self, rows: list[Any]) -> None:
+        """Update the list_box (treeview) for the Tkinter GUI with the latest product information.
 
         Args:
             rows (list[Any]): a list of rows for a single product entry
@@ -105,23 +124,23 @@ class App(tk.Tk):
         # Highlight a row as significantly discounted if it is at least 30% below the average
         highlight_price = average_price * 0.7
 
-        for row in self.listBox.get_children():
-            self.listBox.delete(row)
+        for row in self.list_box.get_children():
+            self.list_box.delete(row)
 
         for i, row in enumerate(rows):
             if float(row[2]) <= highlight_price:
-                self.listBox.insert(
+                self.list_box.insert(
                     "",
                     "end",
                     values=(row[1], row[2], row[3], row[4]),
                     tags="highlight",
                 )
             elif i % 2 == 0:
-                self.listBox.insert(
+                self.list_box.insert(
                     "",
                     "end",
                     values=(row[1], row[2], row[3], row[4]),
                     tags="gray",
                 )
             else:
-                self.listBox.insert("", "end", values=(row[1], row[2], row[3], row[4]))
+                self.list_box.insert("", "end", values=(row[1], row[2], row[3], row[4]))

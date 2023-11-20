@@ -1,4 +1,8 @@
+"""Handle the main entry point for the application."""
 import argparse
+import os
+import sys
+
 from amazpy.app import App
 from amazpy.headless import Headless
 
@@ -23,15 +27,24 @@ if __name__ == "__main__":
             " format."
         ),
     )
-    args = parser.parse_args()
 
-    if args.headless and not args.email_credentials:
-        parser.error(
-            "--headless requires --email-credentials to be supplied."
-        )
+    args = parser.parse_args()
 
     # Run the application in appropriate mode based on (optional) input flag
     if args.headless:
+        email_credentials = args.email_credentials
+
+        # Try and fetch email credentials from an environment variable if they are not supplied
+        if email_credentials is None:
+            _email_credentials = os.environ.get("AMAZPY_EMAIL_CREDENTIALS")
+            if _email_credentials is not None:
+                email_credentials = _email_credentials
+            else:
+                sys.exit(
+                    "Please supply email credentials via the --email-credentials flag"
+                    " or AMAZPY_EMAIL_CREDENTIALS environment variable."
+                )
+
         headless = Headless(args.email_credentials)
     else:
         app = App()

@@ -1,3 +1,4 @@
+"""Handles the logic for reading and writing from/to the SQLite database."""
 import sqlite3
 import sys
 from typing import Any

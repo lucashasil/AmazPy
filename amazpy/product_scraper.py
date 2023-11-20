@@ -1,11 +1,13 @@
-import requests
+"""Contains the logic required for performing the actual
+scraping of product information from Amazon.
+"""
 import sys
+
+import requests
 from bs4 import BeautifulSoup
 
 
 class ProductScraper:
-    # TODO add different store options
-    # TODO add URL cleansing to handle any generic Amazon URL
     def __init__(self, base_url: str = "https://amazon.com"):
         """This class represents a web scraper which will be used to perform
         the actual scraping of product information from Amazon.
@@ -41,14 +43,14 @@ class ProductScraper:
         # site (e.g. amazon.com, amazon.com.au, etc.) in order to retrieve the necessary
         # cookies for the subsequent request to the product URL.
         try:
-            response = requests.get(self.base_url, headers=self.headers)
+            response = requests.get(self.base_url, headers=self.headers, timeout=30)
             self.cookies = response.cookies
         except requests.exceptions.RequestException as e:
             print(e)
             sys.exit("There was an issue performing initial cookie request...")
 
         try:
-            r2 = requests.get(url, headers=self.headers, cookies=self.cookies)
+            r2 = requests.get(url, headers=self.headers, cookies=self.cookies, timeout=30)
             soup = BeautifulSoup(r2.content, features="html.parser")
             product_title = soup.find("span", id="productTitle").text.strip()
 
