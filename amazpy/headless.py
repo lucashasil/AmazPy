@@ -1,13 +1,16 @@
-from amazpy.product_database import ProductDatabase
-from amazpy.product_scraper import ProductScraper
-from amazpy.email import Email
-from datetime import datetime
-from requests.exceptions import RequestException
-from typing import Any
+"""The non-GUI runtime for AmazPy."""
 import json
-import xlsxwriter
 import re
 import time
+from datetime import datetime
+from typing import Any
+
+import xlsxwriter
+from requests.exceptions import RequestException
+
+from amazpy.email import Email
+from amazpy.product_database import ProductDatabase
+from amazpy.product_scraper import ProductScraper
 
 
 class Headless:
@@ -15,7 +18,8 @@ class Headless:
         """A class representing the headless invocation of the application.
 
         Args:
-            email_credentials (str): a string representing the user's email credentials in <email>:<app_password> format
+            email_credentials (str): a string representing the user's email
+            credentials in <email>:<app_password> format
         """
         self.email_credentials = email_credentials
         self.db = ProductDatabase()
@@ -45,25 +49,37 @@ class Headless:
         return message.encode("utf-8")
 
     def process_entry_region(self, sub_entry: Any) -> str:
-        region_pattern = re.compile(r'https:\/\/www\.amazon\.(com\.au|com|co\.uk|ca)')
+        """Determine the correct regional information to use for a given product entry.
+
+        Args:
+            sub_entry (Any): the actual row in the product entry that we are processing
+
+        Returns:
+            str: a string containing the correctly formatted product information for notification
+        """
+        region_pattern = re.compile(r"https:\/\/www\.amazon\.(com\.au|com|co\.uk|ca)")
         match = re.search(region_pattern, sub_entry[4])
 
         currency_mapping = {
             "com": ("USD", "$"),
             "com.au": ("AUD", "$"),
             "co.uk": ("GBP", "£"),
-            "ca": ("CAD", "$")
+            "ca": ("CAD", "$"),
         }
 
         if match and match.group(1) in currency_mapping:
             currency_code, currency_symbol = currency_mapping[match.group(1)]
-            return f"{sub_entry[3]} - {sub_entry[4]}\n === {currency_symbol}{sub_entry[2]} {currency_code} ===\n\n"
+            return (
+                f"{sub_entry[3]} - {sub_entry[4]}\n ==="
+                f" {currency_symbol}{sub_entry[2]} {currency_code} ===\n\n"
+            )
 
         # Handle the case where match_group is not in the mapping
         return ""
 
     def should_send_alert(self, sub_entries: list[Any]) -> bool:
-        """Determine whether or not an email alert should be sent for a given list of product entries
+        """Determine whether or not an email alert should be sent for a
+        given list of product entries
 
         Args:
             sub_entries (list[Any]): a list of entries for a SINGLE product to be checked
@@ -94,7 +110,7 @@ class Headless:
     def scrape(self):
         """Scrape product information from Amazon and save it to the database."""
         # Open URLs file
-        with open("urls.json", "r") as user_file:
+        with open("urls.json", "r", encoding="utf-8") as user_file:
             file_contents = user_file.read()
 
         # Parse JSON data
@@ -102,9 +118,11 @@ class Headless:
         urls = parsed_json["product_urls"]
 
         # Process each URL to get them in a 'cleansed' format
-        pattern = re.compile(r'https:\/\/www\.amazon\.(com\.au|com|co\.uk|ca)\/.*?\/(dp\/[A-Z0-9]+)\/?.*')
-        for i in range(len(urls)):
-            url = re.sub(pattern, r'https://www.amazon.\1/\2', urls[i])
+        pattern = re.compile(
+            r"https:\/\/www\.amazon\.(com\.au|com|co\.uk|ca)\/.*?\/(dp\/[A-Z0-9]+)\/?.*"
+        )
+        for i, url in enumerate(urls):
+            url = re.sub(pattern, r"https://www.amazon.\1/\2", url)
             urls[i] = url
 
         # Entries is a list of lists, where each list contains the entries for a single URL
@@ -122,6 +140,14 @@ class Headless:
                 title = info["title"]
                 price = info["price"]
 
+                # Price could not be scraped, so return early
+                if price == "":
+                    print(
+                        "This product might not currently be available or you may be"
+                        " using an incorrect store region."
+                    )
+                    return
+
                 date = datetime.now().strftime("%m/%d/%Y, %H:%M")
                 # Save product information to database
                 self.db.insert_record(date, price, title, url)
@@ -130,7 +156,8 @@ class Headless:
                 url_entries = self.db.select_records(url)
                 entries.append(url_entries)
 
-                # Create worksheet with sanitized title, xlsx worksheets cannot be longer than 31 characters
+                # Create worksheet with sanitized title, xlsx worksheets cannot
+                # be longer than 31 characters
                 special_characters = r"[\[\]:*?/\\]"
                 title = re.sub(special_characters, "", title)[:30]
 
@@ -155,7 +182,7 @@ class Headless:
         # Send email with price drop notification if necessary
         email_message = self.construct_email_message(entries)
         # Make sure we check that the email body is non-empty before we try to construct one
-        if email_message != b'':
+        if email_message != b"":
             Email(self.email_credentials, email_message)
 
         print("successfully finished scraping, waiting for next run...")

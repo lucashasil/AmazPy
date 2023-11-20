@@ -1,3 +1,4 @@
+"""Contains the Email class, responsible for generating email notifications."""
 import smtplib
 from email.mime.text import MIMEText
 
@@ -7,7 +8,8 @@ class Email:
         """A class representing the email notification functionality of the application.
 
         Args:
-            email_credentials (str): a string representing the user's email credentials in <email>:<app_password> format
+            email_credentials (str): a string representing the user's
+                email credentials in <email>:<app_password> format
             message (str): the message to be sent in the email request
         """
 
@@ -23,7 +25,7 @@ class Email:
             self.s.starttls()
             self.s.login(self.email_credentials[0], self.email_credentials[1])
             self.send_email(message)
-        except:
+        except Exception:
             # Don't crash the script if a notification email fails to be sent
             print(
                 "There was an issue sending a notification email, please check your"
@@ -52,7 +54,10 @@ class Email:
             email_message.as_string(),
         )
 
-        print("Email notification sent successfully! Be sure to check your spam folder if you can't find it.")
+        print(
+            "Email notification sent successfully! Be sure to check your spam folder if"
+            " you can't find it."
+        )
 
         # We are done with the smtp server for this email, so we can quit the connection
         # to ensure that it is tidied up correctly
