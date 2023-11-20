@@ -14,6 +14,7 @@ class ProductDatabase:
         try:
             self.connection = sqlite3.connect(db_name)
             self.cursor = self.connection.cursor()
+            # Create new database table if it does not already exist
             self.create_table()
         except Exception as e:
             print(e)
