@@ -18,9 +18,12 @@ class App(tk.Tk):
         """A class representing the GUI runtime of the application. Inherits from Tkinter.
         """
         super().__init__()
+
+        # Configure the grid layout for the GUI
         self.columnconfigure(0, weight=1)
         self.rowconfigure(2, weight=1)
 
+        # Store the product URL in a Tkinter variable
         self.product_url = tk.StringVar()
         self.create_widgets()
 
@@ -29,26 +32,35 @@ class App(tk.Tk):
 
     def create_widgets(self) -> None:
         """Create the Tkinter widgets for the GUI itself."""
+
+        # Create label for URL entry
         url_label = ttk.Label(self, text="Product URL:", width=25)
         url_label.configure(anchor="center")
         url_label.grid(row=0, column=0, sticky="nsew")
 
+        # Create entry box for product URL
         url_entry = ttk.Entry(self, textvariable=self.product_url, width=50)
         url_entry.grid(row=0, column=1, sticky="nsew")
 
+        # Create button to submit product URL
         sub_btn = ttk.Button(self, text="Submit", command=self.scrape, width=20)
         sub_btn.grid(row=0, column=2, sticky="nsew")
 
+        # Create label for product price history table
         self.label = ttk.Label(self, text="Product Price History", font=("Arial", 26))
         self.label.configure(anchor="center")
         self.label.grid(row=1, columnspan=3, sticky="nsew")
 
+        # Create the list_box (treeview) for the product price history table
         cols = ("Date", "Price", "Title", "URL")
         self.list_box = ttk.Treeview(self, columns=cols, show="headings")
+
+        # Add options for recoloring rows in the table on certain criteria
         self.list_box.tag_configure("gray", background="#3C3C3C")
         self.list_box.tag_configure("highlight", background="#FFD465")
 
-        for (i , col) in enumerate(cols):
+        # Add rows to table
+        for i, col in enumerate(cols):
             self.list_box.heading(i, text=col)
 
         self.list_box.grid(row=2, column=0, columnspan=3, sticky="nsew")
@@ -63,6 +75,7 @@ class App(tk.Tk):
             float: a float representing the average price for the product
         """
 
+        # Store a running total for the average price
         total = 0.0
         for row in rows:
             # Price is the third column of a retrieved row
@@ -72,6 +85,7 @@ class App(tk.Tk):
     def scrape(self) -> None:
         """Perform the actual scraping of product information from Amazon."""
 
+        # Get the URL value from the entry box
         url = self.product_url.get()
 
         # Process URL into a 'cleansed' format
@@ -81,6 +95,7 @@ class App(tk.Tk):
         url = re.sub(pattern, r"https://www.amazon.\1/\2", url)
 
         try:
+            # Scrape the product information from Amazon using supplied URL
             scraper = ProductScraper()
             info = scraper.scrape_product_info(url)
             title = info["title"]
@@ -94,11 +109,15 @@ class App(tk.Tk):
                 )
                 return
 
+            # If the price was scraped successfully, insert the record into the database
             db = ProductDatabase()
             date = datetime.now().strftime("%m/%d/%Y, %H:%M")
             db.insert_record(date, price, title, url)
 
+            # Return all records for the product from the database
             rows: list[Any] = db.select_records(url)
+
+            # Update the table with the latest row
             self.update_list_box(rows)
         except RequestException:
             print(
@@ -120,14 +139,20 @@ class App(tk.Tk):
             rows (list[Any]): a list of rows for a single product entry
         """
 
+        # Get the average price for the product listing
         average_price = self.get_average_price(rows)
-        # Highlight a row as significantly discounted if it is at least 30% below the average
+
+        # Highlight a row as significantly discounted if it is at least 30% below the average price
         highlight_price = average_price * 0.7
 
+        # Delete all rows from the table
         for row in self.list_box.get_children():
             self.list_box.delete(row)
 
+        # Insert the new rows into the table
         for i, row in enumerate(rows):
+            # Use the highlight tag if the price is below the threshold, which
+            # will colour the row yellow
             if float(row[2]) <= highlight_price:
                 self.list_box.insert(
                     "",
@@ -135,6 +160,7 @@ class App(tk.Tk):
                     values=(row[1], row[2], row[3], row[4]),
                     tags="highlight",
                 )
+            # Use the gray tag if the row is even, which will colour the row gray
             elif i % 2 == 0:
                 self.list_box.insert(
                     "",

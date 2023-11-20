@@ -13,6 +13,7 @@ class Email:
             message (str): the message to be sent in the email request
         """
 
+        # Store the email subject message
         self.discount_message = (
             "AmazPy: Product(s) you are tracking have dropped in price"
         )

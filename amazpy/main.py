@@ -28,15 +28,21 @@ if __name__ == "__main__":
         ),
     )
 
+    # Parse command line arguments
     args = parser.parse_args()
 
     # Run the application in appropriate mode based on (optional) input flag
     if args.headless:
+        # If the application is running in headless mode, we need to ensure that
+        # email credentials are supplied OR available elsewhere (env var)
         email_credentials = args.email_credentials
 
         # Try and fetch email credentials from an environment variable if they are not supplied
+        # via flag
         if email_credentials is None:
             _email_credentials = os.environ.get("AMAZPY_EMAIL_CREDENTIALS")
+
+            # Update variable if we found a value for the environment variable
             if _email_credentials is not None:
                 email_credentials = _email_credentials
             else:
@@ -47,5 +53,6 @@ if __name__ == "__main__":
 
         headless = Headless(args.email_credentials)
     else:
+        # Otherwise just run the GUI application
         app = App()
         app.mainloop()

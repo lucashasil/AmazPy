@@ -21,8 +21,10 @@ class Headless:
             email_credentials (str): a string representing the user's email
             credentials in <email>:<app_password> format
         """
+
         self.email_credentials = email_credentials
         self.db = ProductDatabase()
+        # Perform a scrape as soon as the application is started
         self.scrape()
 
         # Continually scrape every hour, this will block the main thread
@@ -41,6 +43,7 @@ class Headless:
             str: a string representing the email message
         """
 
+        # Construct the body of the notification email by iterating over the list of entries
         message = ""
         for entry in entries:
             if self.should_send_alert(entry):
@@ -57,9 +60,13 @@ class Headless:
         Returns:
             str: a string containing the correctly formatted product information for notification
         """
+
+        # Extract the region from the product URL, this will be one of:
+        # com, com.au, co.uk, or ca
         region_pattern = re.compile(r"https:\/\/www\.amazon\.(com\.au|com|co\.uk|ca)")
         match = re.search(region_pattern, sub_entry[4])
 
+        # Store a mapping of region to currency code and symbol
         currency_mapping = {
             "com": ("USD", "$"),
             "com.au": ("AUD", "$"),
@@ -67,6 +74,8 @@ class Headless:
             "ca": ("CAD", "$"),
         }
 
+        # If we have a match, we can use it to determine the
+        # correct currency code and symbol for the entry
         if match and match.group(1) in currency_mapping:
             currency_code, currency_symbol = currency_mapping[match.group(1)]
             return (
@@ -114,13 +123,14 @@ class Headless:
             file_contents = user_file.read()
 
         # Parse JSON data
-        parsed_json = json.loads(file_contents)
-        urls = parsed_json["product_urls"]
+        urls = json.loads(file_contents)["product_urls"]
 
         # Process each URL to get them in a 'cleansed' format
         pattern = re.compile(
             r"https:\/\/www\.amazon\.(com\.au|com|co\.uk|ca)\/.*?\/(dp\/[A-Z0-9]+)\/?.*"
         )
+
+        # Cleanse each URL in the input list
         for i, url in enumerate(urls):
             url = re.sub(pattern, r"https://www.amazon.\1/\2", url)
             urls[i] = url
@@ -149,6 +159,7 @@ class Headless:
                     return
 
                 date = datetime.now().strftime("%m/%d/%Y, %H:%M")
+
                 # Save product information to database
                 self.db.insert_record(date, price, title, url)
 
@@ -176,7 +187,7 @@ class Headless:
                     " please wait for the next retry or restart..."
                 )
 
-        # Close Excel workbook
+        # Close Excel workbook once finished to avoid memory leaks
         workbook.close()
 
         # Send email with price drop notification if necessary

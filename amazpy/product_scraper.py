@@ -50,17 +50,30 @@ class ProductScraper:
             sys.exit("There was an issue performing initial cookie request...")
 
         try:
-            r2 = requests.get(url, headers=self.headers, cookies=self.cookies, timeout=30)
+            # Perform second request to scrape the actual product information using
+            # the previously fetched cookies
+            r2 = requests.get(
+                url, headers=self.headers, cookies=self.cookies, timeout=30
+            )
+
+            # Use BeautifulSoup to parse the HTML response
             soup = BeautifulSoup(r2.content, features="html.parser")
+
+            # Try and extract the product listing title
             product_title = soup.find("span", id="productTitle").text.strip()
 
+            # Try and extract the product listing price, note that this is stored
+            # in two different HTML elements, split by the whole price and the fraction
+            # e.g. 29.99 would be two spans with values of 29 and 99 respectively
             whole_span = soup.find("span", class_="a-price-whole")
             fraction_span = soup.find("span", class_="a-price-fraction")
 
+            # Combine the whole and fraction price values into a single string if possible
             whole_text = whole_span.text if whole_span else ""
             fraction_text = fraction_span.text if fraction_span else ""
             combined_price = whole_text + fraction_text
 
+            # Return a dictionary containing the product title and price
             return {"title": product_title, "price": combined_price}
         except requests.exceptions.RequestException as e:
             print(
