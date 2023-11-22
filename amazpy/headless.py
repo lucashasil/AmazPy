@@ -14,7 +14,7 @@ from amazpy.product_scraper import ProductScraper
 
 
 class Headless:
-    def __init__(self, email_credentials: str):
+    def __init__(self, email_credentials: str, scrape_interval: int = 3600):
         """A class representing the headless invocation of the application.
 
         Args:
@@ -24,13 +24,14 @@ class Headless:
 
         self.email_credentials = email_credentials
         self.db = ProductDatabase()
+
         # Perform a scrape as soon as the application is started
         self.scrape()
 
         # Continually scrape every hour, this will block the main thread
         # but that is fine as we have nothing else to do (unlike the GUI)
         while True:
-            time.sleep(60 * 60)
+            time.sleep(scrape_interval)
             self.scrape()
 
     def construct_email_message(self, entries: list[Any]) -> str:
@@ -190,6 +191,7 @@ class Headless:
         # Close Excel workbook once finished to avoid memory leaks
         workbook.close()
 
+        print(entries)
         # Send email with price drop notification if necessary
         email_message = self.construct_email_message(entries)
         # Make sure we check that the email body is non-empty before we try to construct one

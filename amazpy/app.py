@@ -75,6 +75,9 @@ class App(tk.Tk):
             float: a float representing the average price for the product
         """
 
+        if len(rows) == 0:
+            return 0.0
+
         # Store a running total for the average price
         total = 0.0
         for row in rows:
