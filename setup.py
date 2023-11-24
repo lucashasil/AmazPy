@@ -16,5 +16,5 @@ setup(
         'xlsxwriter',
         'bs4'
     ],
-    pyton_requires='>=3.10',
+    python_requires='>=3.10',
 )
