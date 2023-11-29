@@ -6,7 +6,8 @@ import sys
 from amazpy.app import App
 from amazpy.headless import Headless
 
-if __name__ == "__main__":
+
+def main():
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         description="A Python based Amazon price tracker and scraper."
     )
@@ -56,3 +57,7 @@ if __name__ == "__main__":
         # Otherwise just run the GUI application
         app = App()
         app.mainloop()
+
+
+if __name__ == "__main__":
+    main()

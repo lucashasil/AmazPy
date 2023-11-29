@@ -1,5 +1,5 @@
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='amazpy',
@@ -8,7 +8,7 @@ setup(
     author='Lucas Hasil',
     author_email='lucashasil@gmail.com',
     url='https://github.com/lucashasil/AmazPy',
-    packages=['amazpy'],
+    packages=find_packages(include=['amazpy', 'amazpy.*']),
     install_requires=[
         'tk',
         'sv_ttk',
@@ -17,4 +17,7 @@ setup(
         'bs4'
     ],
     python_requires='>=3.10',
+    entry_points={
+        'amazpy': ['amazpy=amazpy.main:main']
+    }
 )

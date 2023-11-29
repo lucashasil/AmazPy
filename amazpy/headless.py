@@ -115,7 +115,14 @@ class Headless:
             average_price = running_price / len(excl_list)
 
         # If the latest entry is at least 30% below the average price, send an alert
-        return float(sub_entries[-1][2]) <= average_price * 0.7
+        try:
+            return float(sub_entries[-1][2]) <= average_price * 0.7
+        except TypeError:
+            print(
+                "There was an issue calculating the average price for most recent"
+                " scrape, skipping..."
+            )
+            return False
 
     def scrape(self):
         """Scrape product information from Amazon and save it to the database."""
@@ -191,7 +198,6 @@ class Headless:
         # Close Excel workbook once finished to avoid memory leaks
         workbook.close()
 
-        print(entries)
         # Send email with price drop notification if necessary
         email_message = self.construct_email_message(entries)
         # Make sure we check that the email body is non-empty before we try to construct one
