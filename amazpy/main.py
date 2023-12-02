@@ -52,7 +52,7 @@ def main():
                     " or AMAZPY_EMAIL_CREDENTIALS environment variable."
                 )
 
-        headless = Headless(args.email_credentials)
+        Headless(email_credentials)
     else:
         # Otherwise just run the GUI application
         app = App()
