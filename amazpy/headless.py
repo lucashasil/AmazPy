@@ -52,20 +52,20 @@ class Headless:
         # We need to encode the string as UTF-8 to make it valid for sending as an email
         return message.encode("utf-8")
 
-    def process_entry_region(self, sub_entry: Any) -> str:
-        """Determine the correct regional information to use for a given product entry.
+    def get_region_information(self, url: str) -> tuple[str, str]:
+        """Get appropriate currency region information for a given Amazon product URL.
 
         Args:
-            sub_entry (Any): the actual row in the product entry that we are processing
+            url (str): a string representing the Amazon URL of the product listing
 
         Returns:
-            str: a string containing the correctly formatted product information for notification
+            tuple[str, str]: a tuple of two strings representing the currency symbol and code, e.g. ("$", "USD")
         """
 
         # Extract the region from the product URL, this will be one of:
         # com, com.au, co.uk, or ca
         region_pattern = re.compile(r"https:\/\/www\.amazon\.(com\.au|com|co\.uk|ca)")
-        match = re.search(region_pattern, sub_entry[4])
+        match = re.search(region_pattern, url)
 
         # Store a mapping of region to currency code and symbol
         currency_mapping = {
@@ -79,13 +79,35 @@ class Headless:
         # correct currency code and symbol for the entry
         if match and match.group(1) in currency_mapping:
             currency_code, currency_symbol = currency_mapping[match.group(1)]
-            return (
-                f"{sub_entry[3]} - {sub_entry[4]}\n ==="
-                f" {currency_symbol}{sub_entry[2]} {currency_code} ===\n\n"
-            )
 
-        # Handle the case where match_group is not in the mapping
-        return ""
+            # Return a tuple of the currency symbol and code
+            return (currency_symbol, currency_code)
+
+        # Handle the case where match_group is not in the mapping, return
+        # empty strings for both fields
+        return ("", "")
+
+    def process_entry_region(self, sub_entry: Any) -> str:
+        """Determine the correct regional information to use for a given product entry.
+
+        Args:
+            sub_entry (Any): the actual row in the product entry that we are processing
+
+        Returns:
+            str: a string containing the correctly formatted product information for notification
+        """
+
+        # Fetch appropriate currency information for the entry with it's given URL
+        region_info = self.get_region_information(sub_entry[4])
+        currency_symbol = region_info[0]
+        currency_code = region_info[1]
+
+        # Return a string containing the correctly formatted product information
+        # for the alert email, with correct currencies
+        return (
+            f"{sub_entry[3]} - {sub_entry[4]}\n ==="
+            f" {currency_symbol}{sub_entry[2]} {currency_code} ===\n\n"
+        )
 
     def should_send_alert(self, sub_entries: list[Any]) -> bool:
         """Determine whether or not an email alert should be sent for a
@@ -108,6 +130,12 @@ class Headless:
         # to determine if we should send an alert. An important note here is that we
         # exclude the latest entry from the average calculation.
         excl_list = sub_entries[:-1]
+
+        # If the length of the excluded list is 0, then this is the first scrape
+        # for this particular product URL, and thus we have no average to calculate
+        if len(excl_list) == 0:
+            return False
+
         running_price = 0.0
         for entry in excl_list:
             # Price is the third column of a retrieved row
@@ -126,6 +154,7 @@ class Headless:
 
     def scrape(self):
         """Scrape product information from Amazon and save it to the database."""
+
         # Open URLs file
         with open("urls.json", "r", encoding="utf-8") as user_file:
             file_contents = user_file.read()
@@ -157,7 +186,6 @@ class Headless:
                 info = scraper.scrape_product_info(url)
                 title = info["title"]
                 price = info["price"]
-
                 # Price could not be scraped, so return early
                 if price == "":
                     print(
@@ -185,10 +213,23 @@ class Headless:
 
                 # Write product information to worksheet
                 for entry in entries:
-                    for sub_entry in entry:
-                        worksheet.write_row(
-                            "A" + str(entry.index(sub_entry) + 1), sub_entry[1:]
-                        )
+                    for index, sub_entry in enumerate(entry):
+                        # Get region currency information
+                        currency_info = self.get_region_information(sub_entry[4])
+                        symbol, code = currency_info[0], currency_info[1]
+
+                        # Convert the sub_entry to a list so we can mutate it
+                        sub_entry_list = list(sub_entry)
+
+                        # If we have a valid sub_entry, update the price column to include
+                        # correct currency information (symbol and code)
+                        if len(sub_entry_list) > 2:
+                            sub_entry_list[2] = f"{symbol}{sub_entry_list[2]} {code}"
+
+                        # Write this row to the appropriate worksheet
+                        worksheet.write_row("A" + str(index + 1), sub_entry_list[1:])
+
+            # Handle a failed request
             except RequestException:
                 print(
                     "There was an issue fetching product information from Amazon,"
