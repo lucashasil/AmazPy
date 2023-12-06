@@ -75,7 +75,7 @@ class ProductScraper:
 
             # Return a dictionary containing the product title and price
             return {"title": product_title, "price": combined_price}
-        except requests.exceptions.RequestException as e:
+        except (AttributeError, requests.exceptions.RequestException) as e:
             print(
                 "There was an issue fetching product information from Amazon, please"
                 " wait for the next retry or restart..."
