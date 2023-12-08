@@ -122,7 +122,7 @@ class App(tk.Tk):
 
             # Update the table with the latest row
             self.update_list_box(rows)
-        except RequestException:
+        except (AttributeError, RequestException):
             print(
                 "There was an issue fetching product information from Amazon, please"
                 " wait for the next retry or restart..."

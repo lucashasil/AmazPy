@@ -230,7 +230,7 @@ class Headless:
                         worksheet.write_row("A" + str(index + 1), sub_entry_list[1:])
 
             # Handle a failed request
-            except RequestException:
+            except (AttributeError, RequestException):
                 print(
                     "There was an issue fetching product information from Amazon,"
                     " please wait for the next retry or restart..."

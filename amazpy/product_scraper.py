@@ -4,6 +4,7 @@ scraping of product information from Amazon.
 import sys
 
 import requests
+from requests import RequestException
 from bs4 import BeautifulSoup
 
 
@@ -75,9 +76,7 @@ class ProductScraper:
 
             # Return a dictionary containing the product title and price
             return {"title": product_title, "price": combined_price}
-        except (AttributeError, requests.exceptions.RequestException) as e:
-            print(
-                "There was an issue fetching product information from Amazon, please"
-                " wait for the next retry or restart..."
-            )
+        except (AttributeError, RequestException) as e:
+            # Re-raise this exception to bubble it up to the callsite of this method rather
+            # than dealing with it directly here
             raise e
